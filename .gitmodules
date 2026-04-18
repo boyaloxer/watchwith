@@ -1,3 +1,6 @@
 [submodule "deps/libdatachannel"]
 	path = deps/libdatachannel
 	url = https://github.com/paullouisageneau/libdatachannel.git
+[submodule "deps/obs-studio"]
+	path = deps/obs-studio
+	url = https://github.com/obsproject/obs-studio.git
