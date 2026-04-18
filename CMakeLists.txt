@@ -4,7 +4,7 @@ project(WatchWith VERSION 0.1.0)
 
 # OBS_BUILDDIR must be set by the build script (points to the OBS build tree)
 if(NOT DEFINED OBS_BUILDDIR)
-  message(FATAL_ERROR "OBS_BUILDDIR not set. Use scripts/build-windows.ps1 to build.")
+  message(FATAL_ERROR "OBS_BUILDDIR not set. Use the platform build script in scripts/.")
 endif()
 
 # OBS source directory (submodule)
@@ -19,26 +19,46 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 list(INSERT CMAKE_MODULE_PATH 0 "${OBS_SRC}/cmake/finders")
 find_package(FFmpeg REQUIRED COMPONENTS avcodec avutil swscale swresample)
 
-# Import pre-built OBS targets
+# ---------------------------------------------------------------------------
+# Import pre-built OBS targets (platform-specific paths)
+# ---------------------------------------------------------------------------
 if(NOT TARGET OBS::libobs)
   add_library(OBS::libobs SHARED IMPORTED)
-  set_target_properties(OBS::libobs PROPERTIES
-    IMPORTED_LOCATION "${OBS_BUILDDIR}/rundir/RelWithDebInfo/bin/64bit/obs.dll"
-    IMPORTED_IMPLIB "${OBS_BUILDDIR}/libobs/RelWithDebInfo/obs.lib"
-    INTERFACE_INCLUDE_DIRECTORIES "${OBS_SRC}/libobs;${OBS_BUILDDIR}/config"
-  )
+  if(WIN32)
+    set_target_properties(OBS::libobs PROPERTIES
+      IMPORTED_LOCATION "${OBS_BUILDDIR}/rundir/RelWithDebInfo/bin/64bit/obs.dll"
+      IMPORTED_IMPLIB "${OBS_BUILDDIR}/libobs/RelWithDebInfo/obs.lib"
+      INTERFACE_INCLUDE_DIRECTORIES "${OBS_SRC}/libobs;${OBS_BUILDDIR}/config"
+    )
+  else()
+    set_target_properties(OBS::libobs PROPERTIES
+      IMPORTED_LOCATION "${OBS_BUILDDIR}/libobs/libobs.dylib"
+      IMPORTED_NO_SONAME TRUE
+      INTERFACE_INCLUDE_DIRECTORIES "${OBS_SRC}/libobs;${OBS_BUILDDIR}/config"
+    )
+  endif()
 endif()
 
 # Graphics backend libraries
-foreach(_gfx d3d11 opengl)
-  if(EXISTS "${OBS_BUILDDIR}/libobs-${_gfx}/RelWithDebInfo/libobs-${_gfx}.dll")
-    add_library(OBS::libobs-${_gfx} SHARED IMPORTED)
-    set_target_properties(OBS::libobs-${_gfx} PROPERTIES
-      IMPORTED_LOCATION "${OBS_BUILDDIR}/rundir/RelWithDebInfo/bin/64bit/libobs-${_gfx}.dll"
-      IMPORTED_IMPLIB "${OBS_BUILDDIR}/libobs-${_gfx}/RelWithDebInfo/libobs-${_gfx}.lib"
+if(WIN32)
+  foreach(_gfx d3d11 opengl)
+    if(EXISTS "${OBS_BUILDDIR}/libobs-${_gfx}/RelWithDebInfo/libobs-${_gfx}.dll")
+      add_library(OBS::libobs-${_gfx} SHARED IMPORTED)
+      set_target_properties(OBS::libobs-${_gfx} PROPERTIES
+        IMPORTED_LOCATION "${OBS_BUILDDIR}/rundir/RelWithDebInfo/bin/64bit/libobs-${_gfx}.dll"
+        IMPORTED_IMPLIB "${OBS_BUILDDIR}/libobs-${_gfx}/RelWithDebInfo/libobs-${_gfx}.lib"
+      )
+    endif()
+  endforeach()
+elseif(APPLE)
+  if(EXISTS "${OBS_BUILDDIR}/libobs-opengl/libobs-opengl.so")
+    add_library(OBS::libobs-opengl SHARED IMPORTED)
+    set_target_properties(OBS::libobs-opengl PROPERTIES
+      IMPORTED_LOCATION "${OBS_BUILDDIR}/libobs-opengl/libobs-opengl.so"
+      IMPORTED_NO_SONAME TRUE
     )
   endif()
-endforeach()
+endif()
 
 # libdatachannel for WebRTC
 find_package(MbedTLS CONFIG REQUIRED)
@@ -149,11 +169,29 @@ if(WIN32)
   target_link_libraries(watchwith PRIVATE dwmapi)
 endif()
 
-# Post-build: copy watchwith.exe into the OBS rundir so it can find plugins/DLLs
+# macOS: embed RPATH so the executable can find OBS and FFmpeg dylibs at runtime
+if(APPLE)
+  set_target_properties(watchwith PROPERTIES
+    BUILD_RPATH "${OBS_BUILDDIR}/libobs;${OBS_BUILDDIR}/libobs-opengl"
+    INSTALL_RPATH "@executable_path/../Frameworks;@executable_path/../lib"
+  )
+  target_link_libraries(watchwith PRIVATE
+    "-framework CoreFoundation"
+    "-framework CoreAudio"
+    "-framework AudioToolbox"
+    "-framework CoreVideo"
+  )
+endif()
+
+# Post-build: copy executable into the OBS rundir so it can find plugins/data
+set(_RUNBIN "${OBS_BUILDDIR}/rundir/RelWithDebInfo/bin")
+if(WIN32)
+  string(APPEND _RUNBIN "/64bit")
+endif()
 add_custom_command(
   TARGET watchwith POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_RUNBIN}"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "$<TARGET_FILE:watchwith>"
-    "${OBS_BUILDDIR}/rundir/RelWithDebInfo/bin/64bit/watchwith.exe"
+    "$<TARGET_FILE:watchwith>" "${_RUNBIN}/$<TARGET_FILE_NAME:watchwith>"
   COMMENT "Copying watchwith to OBS rundir"
 )
