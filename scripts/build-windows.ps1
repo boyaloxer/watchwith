@@ -57,8 +57,8 @@ Write-Host "`n[2/5] Downloading OBS dependencies..." -ForegroundColor Yellow
 $obsDepsDir = Join-Path $DepsDir "obs-deps-$DepsVersion-x64"
 $qtDepsDir = Join-Path $DepsDir "obs-deps-qt6-$DepsVersion-x64"
 
-Download-And-Extract "$DepsBaseUrl/$DepsVersion/obs-deps-$DepsVersion-windows-x64.zip" $obsDepsDir "obs-deps"
-Download-And-Extract "$DepsBaseUrl/$DepsVersion/obs-deps-qt6-$DepsVersion-windows-x64.zip" $qtDepsDir "obs-deps-qt6"
+Download-And-Extract "$DepsBaseUrl/$DepsVersion/windows-deps-$DepsVersion-x64.zip" $obsDepsDir "obs-deps"
+Download-And-Extract "$DepsBaseUrl/$DepsVersion/windows-deps-qt6-$DepsVersion-x64.zip" $qtDepsDir "obs-deps-qt6"
 
 $prefixPath = "$obsDepsDir;$qtDepsDir"
 

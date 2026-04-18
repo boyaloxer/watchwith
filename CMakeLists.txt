@@ -10,10 +10,14 @@ endif()
 # OBS source directory (submodule)
 set(OBS_SRC "${CMAKE_CURRENT_SOURCE_DIR}/deps/obs-studio")
 
-# Only add OBS's common cmake helpers (not finders - they conflict with config-mode packages)
+# OBS cmake helpers
 list(APPEND CMAKE_MODULE_PATH "${OBS_SRC}/cmake/common")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
+
+# FFmpeg for H264/Opus encoding/decoding (prepend to beat Qt6's bundled FindFFmpeg)
+list(INSERT CMAKE_MODULE_PATH 0 "${OBS_SRC}/cmake/finders")
+find_package(FFmpeg REQUIRED COMPONENTS avcodec avutil swscale swresample)
 
 # Import pre-built OBS targets
 if(NOT TARGET OBS::libobs)
@@ -107,6 +111,8 @@ target_sources(
     src/net/session.cpp
     src/net/peer-connection.h
     src/net/peer-connection.cpp
+    src/net/media-codec.h
+    src/net/media-codec.cpp
     src/net/media-bridge.h
     src/net/media-bridge.cpp
 )
@@ -119,6 +125,10 @@ target_link_libraries(
     OBS::libobs
     Qt6::Widgets
     LibDataChannel::LibDataChannelStatic
+    FFmpeg::avcodec
+    FFmpeg::avutil
+    FFmpeg::swscale
+    FFmpeg::swresample
 )
 
 foreach(graphics_library IN ITEMS opengl metal d3d11)

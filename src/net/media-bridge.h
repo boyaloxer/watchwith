@@ -6,10 +6,14 @@
 #include <QObject>
 
 #include <atomic>
+#include <memory>
 #include <mutex>
-#include <vector>
 
 class PeerConnection;
+class VideoEncoder;
+class VideoDecoder;
+class AudioEncoder;
+class AudioDecoder;
 
 void register_remote_source();
 
@@ -41,5 +45,8 @@ private:
 
 	OBSSourceAutoRelease remoteVideoSource;
 
-	std::mutex encodeMutex;
+	std::unique_ptr<VideoEncoder> videoEncoder;
+	std::unique_ptr<VideoDecoder> videoDecoder;
+	std::unique_ptr<AudioEncoder> audioEncoder;
+	std::unique_ptr<AudioDecoder> audioDecoder;
 };

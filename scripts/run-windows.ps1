@@ -16,7 +16,8 @@ if (-not (Test-Path $exe)) {
 Stop-Process -Name watchwith -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 
-$env:PATH = "$BinDir;$env:PATH"
+$DepsBinDir = Join-Path $DepsDir "obs-deps-$DepsVersion-x64\bin"
+$env:PATH = "$BinDir;$DepsBinDir;$env:PATH"
 $env:QT_QPA_PLATFORM_PLUGIN_PATH = $QtBinDir
 
 Start-Process -FilePath $exe -WorkingDirectory $RunDir
